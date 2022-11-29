@@ -20,12 +20,11 @@ app.use(function (req, res, next) {
 // Controllers -------------------------
 const buildBookingsInsertSql = (record) => {
   let table = `bookings`;
-  let mutableFields = ['VehicleId, CustomerId,SalesId, DateBooked'];
+  let mutableFields = ['VehicleId, CustomerId,SalesId'];
   return `INSERT INTO ${table} SET
           VehicleId="${record['VehicleId']}",
           CustomerId="${record['CustomerId']}", 
-          SalesId="${record['SalesId']}",
-          DateBooked="${record['DateBooked']}"; `
+          SalesId="${record['SalesId']}" `
 };
 
 const buildBookingsSelectSql = (whereField, id) => {
@@ -40,6 +39,16 @@ const buildBookingsSelectSql = (whereField, id) => {
     return sql;
   };
 
+
+  // Build Vehicle Select Sql 
+  const buildVehiclesSelectSql = () => {
+    let table = 'vehicles';
+    let fields = ['VehicleId, VehicleMake, VehicleModel, VehicleYear,VehiclePrice'];
+    let sql = `SELECT ${fields} FROM ${table}`;
+    return sql;
+  };
+
+  
   const create = async (sql) => {
     try {
         const status = await database.query(sql);
@@ -70,7 +79,7 @@ const buildBookingsSelectSql = (whereField, id) => {
 
   const buildUsersSelectSql = (whereField, id) => {
     let table = 'users LEFT JOIN UserTypes ON userUserTypeId=UserTypeID';
-    let fields = ['UserId, userFirstName, userSurname, userUserTypeId, userTypeName'];
+    let fields = ['userFirstName, userSurname, userTypeName'];
    
     let sql = `SELECT ${fields} FROM ${table}`;
     if (id) sql += ` WHERE ${whereField}=${id}`;
@@ -100,6 +109,18 @@ const buildBookingsSelectSql = (whereField, id) => {
     res.status(201).json(result);
   };
 
+
+  // Vehicle Controller 
+  const vehiclesController = async(res) => {
+    // Data Access 
+    const sql = buildVehiclesSelectSql();
+    const { isSuccess, result, message: accessMessage } = await read(sql);
+    if (!isSuccess) return res.status(400).json({ message: accessMessage });
+  
+    // Response to request
+    res.status(200).json(result);
+  };
+
     // Users Controller 
 const usersController = async(res, whereField, id) => {
   
@@ -122,6 +143,11 @@ app.get('/api/bookings/customers/:id', (req, res) =>  bookingsController(res,"Cu
 
 app.post('/api/bookings', postBookingsController);
 
+
+// Vehicles 
+app.get('/api/vehicles', (req, res) =>  vehiclesController(res, null, null));
+app.get('/api/vehicles/:id(\\d+)',(req, res) =>  vehiclesController(res, "BookingId",  req.params.id));
+
 // Users
 const SALESPERSON = 1;
 const CUSTOMERS = 2;
@@ -130,8 +156,8 @@ app.get('/api/users/:id(\\d+)', (req, res) => usersController(res, "UserId", req
 app.get('/api/users/customers', (req, res) => usersController(res, CUSTOMERS, req.params.id, false));
 app.get('/api/users/sales', (req, res) => usersController(res, SALESPERSON, req.params.id, false));
 
-app.get('/api/users/customers/:id', (req, res) => usersController(res,"userUserTypeId", req.params.id, false));
-app.get('/api/users/sales/:id', (req, res) => usersController(res,"userUserTypeId", req.params.id, false));
+app.get('/api/users/customers/:id', (req, res) => usersController(res,CUSTOMERS, req.params.id, false));
+app.get('/api/users/sales/:id', (req, res) => usersController(res,SALESPERSON, req.params.id, false));
 // Start server ------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT,() => console.log(`Server started on port ${PORT}`));
