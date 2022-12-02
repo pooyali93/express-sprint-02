@@ -24,7 +24,8 @@ const buildBookingsInsertSql = (record) => {
   return `INSERT INTO ${table} SET
           VehicleId="${record['VehicleId']}",
           CustomerId="${record['CustomerId']}", 
-          SalesId="${record['SalesId']}" `
+          SalesId="${record['SalesId']}" 
+          DateBooked="${record['DateBooked']}" `
 };
 
 const buildBookingsSelectSql = (whereField, id) => {
@@ -79,7 +80,7 @@ const buildBookingsSelectSql = (whereField, id) => {
 
   const buildUsersSelectSql = (whereField, id) => {
     let table = 'users LEFT JOIN UserTypes ON userUserTypeId=UserTypeID';
-    let fields = ['userFirstName, userSurname, userTypeName'];
+    let fields = ['UserId, userFirstName, userSurname, userPhoneNumber, userTypeName'];
    
     let sql = `SELECT ${fields} FROM ${table}`;
     if (id) sql += ` WHERE ${whereField}=${id}`;
