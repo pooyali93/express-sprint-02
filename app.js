@@ -18,12 +18,12 @@ app.use(function (req, res, next) {
  app.use(cors({ origin: '*' }));
   
 // Controllers -------------------------
-// const buildSetFields = (fields) => fields.reduce((setSQL, field, index) => 
-//   setSQL + `${field} =:${field}` + ((index === fields.length - 1) ? '' : ', '), 'SET ');
+const buildSetFields = (fields) => fields.reduce((setSQL, field, index) =>
+  setSQL + `${field}=:${field}` + ((index === fields.length - 1) ? '' : ', '), 'SET ');
 
 const buildBookingsUpdateSql = () => {
   let table = `bookings`;
-  let mutableFields = ['VehicleId:=VehicleId', 'CustomerId:=CustomerId', 'SalesId:=SalesId', 'DateBooked:=DateBooked'];
+  let mutableFields = ['VehicleId', 'CustomerId', 'SalesId', 'DateBooked'];
 
   return `UPDATE ${table} ` + buildSetFields(mutableFields) + ` WHERE BookingId=:BookingId `;
 };
@@ -33,7 +33,7 @@ const buildBookingsUpdateSql = () => {
 const buildBookingsInsertSql = () => {
   let table = `bookings`;
   let mutableFields = ['VehicleId', 'CustomerId', 'SalesId', 'DateBooked'];
-  return `INSERT INTO ${table}  SET ${mutableFields}`;
+  return `INSERT INTO ${table} ` + buildSetFields(mutableFields) ;
 };
 
 const buildBookingsSelectSql = (whereField, id) => {
