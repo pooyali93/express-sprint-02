@@ -18,22 +18,14 @@ app.use(function (req, res, next) {
  app.use(cors({ origin: '*' }));
   
 // Controllers -------------------------
-const buildSetFields = (fields) => fields.reduce((setSQL, field, index) =>
-  setSQL + `${field}=:${field}` + ((index === fields.length - 1) ? '' : ', '), 'SET ');
-
-const buildBookingsUpdateSql = () => {
+const buildBookingsInsertSql = (record) => {
   let table = `bookings`;
-  let mutableFields = ['VehicleId', 'CustomerId', 'SalesId', 'DateBooked'];
-
-  return `UPDATE ${table} ` + buildSetFields(mutableFields) + ` WHERE BookingId=:BookingId `;
-};
-
-
-
-const buildBookingsInsertSql = () => {
-  let table = `bookings`;
-  let mutableFields = ['VehicleId', 'CustomerId', 'SalesId', 'DateBooked'];
-  return `INSERT INTO ${table} ` + buildSetFields(mutableFields) ;
+  let mutableFields = ['VehicleId, CustomerId,SalesId'];
+  return `INSERT INTO ${table} SET
+          VehicleId="${record['VehicleId']}",
+          CustomerId="${record['CustomerId']}", 
+          SalesId="${record['SalesId']}",
+          DateBooked="${record['DateBooked']}"`
 };
 
 const buildBookingsSelectSql = (whereField, id) => {
@@ -54,30 +46,12 @@ const buildBookingsSelectSql = (whereField, id) => {
     let sql = `SELECT ${fields} FROM ${table}`;
     return sql;
   };
-  const updateBookings = async (sql, id, record) => {
-    try {
-        const status = await database.query(sql, {...record, BookingId: id});
-        if (status[0].affectedRows === 0)
-      return { isSuccess: false, result: null, message: 'Failed to update record: no rows affected' };
-
-    const recoverRecordSql = buildBookingsSelectSql(id, null);
-
-    const { isSuccess, result, message } = await read(recoverRecordSql);
-        
-    return isSuccess
-      ? { isSuccess: true, result: result, message: 'Record successfully recovered' }
-      : { isSuccess: false, result: null, message: `Failed to recover the updated record: ${message}` };
-  }
-  catch (error) {
-    return { isSuccess: false, result: null, message: `Failed to execute query: ${error.message}` };
-  }
-};
 
   
-  const createBookings = async (sql, record) => {
+  const create = async (sql) => {
     try {
-        const status = await database.query(sql, record);
-        const recoverRecordSql = buildBookingsSelectSql(status[0].insertId, null);
+        const status = await database.query(sql);
+        const recoverRecordSql = buildBookingsSelectSql(status[0].insertId);
         const {isSuccess, result, message} = await read(recoverRecordSql);
 
         return isSuccess
@@ -101,18 +75,6 @@ const buildBookingsSelectSql = (whereField, id) => {
       }
     };
 
-    const postBookingsController = async(req, res) => {
-      // Validate Request 
-      // Data Access 
-      const sql = buildBookingsInsertSql();
-      const { isSuccess, result, message: accessMessage } = await createBookings(sql, req.body);
-      if (!isSuccess) return res.status(404).json({ message: accessMessage });
-    
-      // Response to request
-      res.status(201).json(result);
-    };
-  
-
 
   const buildUsersSelectSql = (whereField, id) => {
     let table = 'users LEFT JOIN UserTypes ON userUserTypeId=UserTypeID';
@@ -135,20 +97,17 @@ const buildBookingsSelectSql = (whereField, id) => {
     res.status(200).json(result);
   };
 
-  const putBookingsController = async(req, res) => {
+  const postBookingsController = async(req, res) => {
     // Validate Request 
-    const id = req.params.id;
-    const record = req.body;
     // Data Access 
-    const sql = buildBookingsUpdateSql();
-    const { isSuccess, result, message: accessMessage } = await updateBookings(sql, id, record);
+    const sql = buildBookingsInsertSql(req.body);
+    const { isSuccess, result, message: accessMessage } = await create(sql);
     if (!isSuccess) return res.status(404).json({ message: accessMessage });
   
     // Response to request
-    res.status(200).json(result);
+    res.status(201).json(result);
   };
 
- 
 
   // Vehicle Controller 
   const vehiclesController = async(res) => {
@@ -181,14 +140,7 @@ app.get('/api/bookings/sales/:id', (req, res) =>  bookingsController(res,"SalesI
 app.get('/api/bookings/users/:id', (req, res) =>  bookingsController(res,"CustomerId",  req.params.id));
 app.get('/api/bookings/customers/:id', (req, res) =>  bookingsController(res,"CustomerId",  req.params.id));
 
-
-// POST 
 app.post('/api/bookings', postBookingsController);
-
-// PUT 
-app.put('/api/bookings/:id', putBookingsController);
-
-
 
 
 // Vehicles 
